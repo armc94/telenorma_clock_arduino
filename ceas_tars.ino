@@ -31,6 +31,8 @@ typedef unsigned long uint32;
 #define FALSE 0
 #define TRUE 1
 
+
+
 typedef enum task_state
 {
 	WAIT,
@@ -61,7 +63,6 @@ const int pin_d7 = 7;
 const int pin_BL = 10;
 LiquidCrystal lcd( pin_RS,  pin_EN,  pin_d4,  pin_d5,  pin_d6,  pin_d7);
 
-uint32 cnt_one;
 RtcDateTime now;
 
 typedef struct	phisical_clock
@@ -72,6 +73,53 @@ typedef struct	phisical_clock
 } phisical_clock_s;
 
 phisical_clock pc;
+typedef enum fsm_state
+{
+	sci,
+	scio,
+	scim,
+	scis,
+	scii,
+	acf,
+	acfam,
+	acfazm,
+	acfao,
+	acfasm,
+	acfaszm,
+	acfata,
+	acfi,
+	ice,
+	iceo,
+	icem,
+	icess,
+	icei,
+	sd,
+	sdz,
+	sdl,
+	sda,
+	sdi,
+	num_of_states
+} e_fsm_state;
+typedef enum buttons
+{
+	BT_RIGHT,
+	BT_UP,
+	BT_DOWN,
+	BT_LEFT,
+	BT_SELECT,
+	NO_BT_PRESSED
+} buttons_enum;
+
+typedef struct disp
+{
+	char line1[16] = "                ";
+	char line2[16] = "                ";
+	uint8 blink[2] = {17, 17};
+} disp;
+
+disp display;
+
+uint16 bt_rezistors[5] = {60, 200, 400, 600, 800};
 
 
 void printDateTime(const RtcDateTime& dt);
@@ -79,7 +127,6 @@ void cyclic_rtc();
 void print_out_time_to_lcd();
 void print_in_time_to_lcd();
 void lcd_cyclic();
-
 
 void task_1ms(void);
 void task_5ms(void);
@@ -96,12 +143,36 @@ task_s tablou_tasks[NUM_TASKS]=
 	 {4,500,task_50ms,WAIT,0},
 	 {5,1000,task_100ms,WAIT,0},
 };
+buttons_enum but_pressed = NO_BT_PRESSED;
 
-uint8_t i;
+void debounce_D()
+{
+	uint16 x = analogRead (0);
+	uint8 button = NO_BT_PRESSED;
+	static uint8 buffers[5] = {0,0,0,0,0};
+
+	if      (x < bt_rezistors[BT_RIGHT] ) button = BT_RIGHT;
+	else if (x < bt_rezistors[BT_UP]    ) button = BT_UP;
+	else if (x < bt_rezistors[BT_DOWN]  ) button = BT_DOWN;
+	else if (x < bt_rezistors[BT_LEFT]  ) button = BT_LEFT;
+	else if (x < bt_rezistors[BT_SELECT]) button = BT_SELECT;
+
+	for(uint8 bt = BT_RIGHT; bt < NO_BT_PRESSED; bt++)
+	{
+		buffers[bt] <<= 1;
+		if (button == bt) buffers[bt] |= 0x01u;
+		if (buffers[bt] == 0x0f) but_pressed = bt;
+	}
+
+	lcd.setCursor(0,1);
+	lcd.print(but_pressed, 10);
+}
+
+
+
 void init_OS(void)
 {
-
-	for(i=0;i<NUM_TASKS;i++)
+	for(uint8 i=0;i<NUM_TASKS;i++)
 	{
 		tablou_tasks[i].current_time=tablou_tasks[i].delay;
 	}
@@ -109,8 +180,7 @@ void init_OS(void)
 }
 void idle(void)
 {
-
-	for(i=0;i<NUM_TASKS;i++)
+	for(uint8 i=0;i<NUM_TASKS;i++)
 	{
 		if((tablou_tasks[i].state!=READY)&&(tablou_tasks[i].current_time>0))
 		{
@@ -128,7 +198,7 @@ void scheduler(void)
 {
 	while(1)
 	{
-		for(i=0;i<NUM_TASKS;i++)
+		for(uint8 i=0;i<NUM_TASKS;i++)
 		{
 			if(tablou_tasks[i].state==READY)
 			{
@@ -141,7 +211,7 @@ void scheduler(void)
 }
 void task_1ms(void)
 {
-
+	debounce_D();
 }
 void task_5ms(void)
 {
@@ -149,24 +219,24 @@ void task_5ms(void)
 }
 void task_10ms(void)
 {
-
-}
-void task_20ms(void)
-{
 	pc_cyclic();
 	tick_cyclic();
 	lcd_cyclic();
+	cyclic_fsm();
+}
+void task_20ms(void)
+{
+
 }
 void task_50ms(void)
 {
     cyclic_rtc();
-
 }
 void task_100ms(void)
 {
-	static uint8 i = 0;
+	static uint32 i = 0;
 	lcd.setCursor(0,0);
-    lcd.println(i , 10);
+    lcd.print(i , 10);
 	i++;
 }
 void pc_cyclic()
@@ -179,6 +249,7 @@ void cyclic_rtc()
 {
 	now = Rtc.GetDateTime();
 
+	// Good idea to throw an error...
 	if (!now.IsValid())
 	{
 	    // Common Causes:
@@ -186,17 +257,6 @@ void cyclic_rtc()
 			//the power line was disconnected
 	    Serial.println("RTC lost confidence in the DateTime!");
 	}
-}
-
-void tick_init()
-
-{
-
-}
-
-void tick_step()
-{
-
 }
 
 void tick_cyclic()
@@ -236,12 +296,14 @@ void tick_cyclic()
 
 }
 
+
+
 void lcd_cyclic()
 {
 	lcd.setCursor(7 ,0);
 	print_in_time_to_lcd();
 
-	lcd.setCursor(7 ,1);
+	lcd.setCursor(10 ,1);
 	print_out_time_to_lcd();
 
 	lcd.setCursor(3,0);
@@ -259,20 +321,11 @@ void init_ports_for_ei()
 {
 	DDRD  &= ~(1<<PD2);
     PORTD |= (1<<PD2);
-
-	// DDRC |= (1<<PC3);
-	// PORTC |= (1<<PC3);
-
-	// Serial.println(DDRD, 10);
-	// Serial.println(PORTD, 10);
 }
 void init_ports_for_ticking()
 {
 	DDRC  |= (1<<PC1) | (1<<PC2);
-	// CLEAR_BIT(DDRC, PC1);
-	// CLEAR_BIT(DDRC, PC2);
 	PORTC |= (1<<PC1) | (1<<PC2);
-	// Serial.println(DDRC, 10);
 }
 
 void init_timer1(void)
@@ -334,8 +387,6 @@ void init_rtc()
     {
 		Serial.println("RTCisthesameascompiletime!(notexpectedbutallisfine)");
     }
-
-    // Serial.println("here");
 }
 
 void init_lcd()
@@ -350,80 +401,48 @@ void init_pc()
 	pc.minute = EEPROM.read(1);
 }
 
-ISR(TIMER2_COMPA_vect)
+e_fsm_state sci()
 {
-	idle();
+	return SA;
+}
+e_fsm_state f_SB()
+{
+	return SB;
+}
+e_fsm_state f_SC()
+{
+	return SC;
+}
+e_fsm_state f_SD()
+{
+	return SD;
 }
 
-ISR(INT0_vect)        //External interrupt_one ISR
+// typedef (*e_fsm_state)(void);
+typedef e_fsm_state (*fsm_ptr)(void);
+fsm_ptr transition_table[num_of_states][NO_BT_PRESSED] = {
+	{ f_SB, NULL, NULL, NULL, NULL },
+	{ NULL, NULL, f_SC, f_SA, NULL },
+	{ f_SD, f_SB, NULL, NULL, NULL },
+	{ NULL, NULL, NULL, f_SC, NULL },
+};
+
+
+
+void cyclic_fsm()
 {
-	cnt_one++;
-	// Serial.println("catched here");
+	static e_fsm_state prev_fsm_state, cur_fsm_state = SA;
 
-	// lcd.setCursor(0,1);
-	// lcd.print(cnt_one, 10);
-
-	EEPROM.update(0, pc.hour); // hour on address 0
-	EEPROM.update(1, pc.minute); // minute on address 1
+	if (but_pressed != NO_BT_PRESSED && transition_table[cur_fsm_state][but_pressed] != NULL)
+	{
+		prev_fsm_state = cur_fsm_state;
+		cur_fsm_state = transition_table[cur_fsm_state][but_pressed]();
+		but_pressed = NO_BT_PRESSED;
+	}
+	// p_fsm das = f_SB;
+	lcd.setCursor(3,1);
+	lcd.print(cur_fsm_state, 10);
 }
-
-
-void setup ()
-{
-	init_lcd();
-	init_rtc();
-	init_OS();
-	init_pc();
-	init_timer1();
-	init_ports_for_ei();
-	init_external_interrupts();
-	init_ports_for_ticking();
-
-	scheduler();
-}
-
-void loop ()
-{
-    // int x;
-    // RtcDateTime now = Rtc.GetDateTime();
-    //
-    // printDateTime(now);
-    // Serial.println();
-    //
-    // x = analogRead (0);
-    // lcd.setCursor(10,1);
-    //
-    // if (!now.IsValid())
-    // {
-    //     // Common Causes:
-    //     //    1) the battery on the device is low or even missing and
-	//		//the power line was disconnected
-    //     Serial.println("RTC lost confidence in the DateTime!");
-    // }
-    //
-    //
-    //
-    //  if (x < 60) {
-    //    lcd.print ("Right ");
-    //  }
-    //  else if (x < 200) {
-    //    lcd.print ("Up    ");
-    //  }
-    //  else if (x < 400){
-    //    lcd.print ("Down  ");
-    //  }
-    //  else if (x < 600){
-    //    lcd.print ("Left  ");
-    //  }
-    //  else if (x < 800){
-    //    lcd.print ("Select");
-    //    Serial.println("here");
-    //
-    // // delay(1000); // ten seconds
-    // }
-}
-
-
 
 void printDateTime(const RtcDateTime& dt)
 {
@@ -452,8 +471,6 @@ void print_in_time_to_lcd()
             now.Hour(),
             now.Minute(),
             now.Second() );
-    // Serial.print(datestring);
-    // lcd.setCursor(0,0);
     lcd.print(datestring);
 }
 
@@ -466,7 +483,35 @@ void print_out_time_to_lcd()
             PSTR("%02u:%02u"),
             pc.hour,
             pc.minute );
-    // Serial.print(datestring);
-    // lcd.setCursor(0,0);
     lcd.print(datestring);
+}
+
+void setup ()
+{
+	init_lcd();
+	init_rtc();
+	init_OS();
+	init_pc();
+	init_timer1();
+	init_ports_for_ei();
+	init_external_interrupts();
+	init_ports_for_ticking();
+
+	scheduler();
+}
+
+void loop ()
+{
+
+}
+
+ISR(TIMER2_COMPA_vect)
+{
+	idle();
+}
+
+ISR(INT0_vect)        //External interrupt_one ISR
+{
+	EEPROM.update(0, pc.hour); // hour on address 0
+	EEPROM.update(1, pc.minute); // minute on address 1
 }
