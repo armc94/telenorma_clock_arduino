@@ -11,6 +11,7 @@
 #include <LiquidCrystal.h>
 #include <EEPROM.h>
 #include <avr/interrupt.h>
+#include <string.h>
 
 typedef signed char sint8;
 typedef unsigned char uint8;
@@ -18,7 +19,7 @@ typedef signed int sint16;
 typedef unsigned int uint16;
 typedef signed long sint32;
 typedef unsigned long uint32;
-
+typedef void (*function_pointer)(void);
 
 #define countof(a) (sizeof(a) / sizeof(a[0]))
 #define SET_BIT(x, pos) (x |= (1U << pos))
@@ -30,8 +31,13 @@ typedef unsigned long uint32;
 #define ACTUATED 1
 #define FALSE 0
 #define TRUE 1
-
-
+#define pin_RS  8
+#define pin_EN  9
+#define pin_d4  4
+#define pin_d5  5
+#define pin_d6  6
+#define pin_d7  7
+#define pin_BL  10
 
 typedef enum task_state
 {
@@ -40,9 +46,8 @@ typedef enum task_state
 	ACTIVE,
 }task_state_e;
 
- typedef void(*function_pointer)(void);
 
- typedef struct task
+typedef struct task
  {
 	 const uint16_t delay;
 	 const uint16_t cycletime;
@@ -54,13 +59,7 @@ typedef enum task_state
 ThreeWire myWire(A4,A5,A3); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
 
-const int pin_RS = 8;
-const int pin_EN = 9;
-const int pin_d4 = 4;
-const int pin_d5 = 5;
-const int pin_d6 = 6;
-const int pin_d7 = 7;
-const int pin_BL = 10;
+
 LiquidCrystal lcd( pin_RS,  pin_EN,  pin_d4,  pin_d5,  pin_d6,  pin_d7);
 
 RtcDateTime now;
@@ -75,6 +74,7 @@ typedef struct	phisical_clock
 phisical_clock pc;
 typedef enum fsm_state
 {
+	idl,
 	sci,
 	scio,
 	scim,
@@ -98,8 +98,11 @@ typedef enum fsm_state
 	sdl,
 	sda,
 	sdi,
+	inapoi,
 	num_of_states
 } e_fsm_state;
+
+e_fsm_state fsm_state = idl;
 typedef enum buttons
 {
 	BT_RIGHT,
@@ -110,16 +113,25 @@ typedef enum buttons
 	NO_BT_PRESSED
 } buttons_enum;
 
+const char* sci_string = "seteaza ceasul intern";
+
 typedef struct disp
 {
-	char line1[16] = "                ";
-	char line2[16] = "                ";
-	uint8 blink[2] = {17, 17};
+	char*  line1 = "                ";
+	char*  line2 = "                ";
+	uint8 blink1[2] = {17, 17};
+	uint8 blink2[2] = {17, 17};
+	uint8 scroll1[3] = {17,17, 17}; // first char, last char, length
+	uint8 scroll2[3] = {17,17, 17}; // first char, last char, length
+	uint8 len1 = 0;
+	uint8 len2 = 0;
+
 } disp;
 
 disp display;
 
 uint16 bt_rezistors[5] = {60, 200, 400, 600, 800};
+
 
 
 void printDateTime(const RtcDateTime& dt);
@@ -164,8 +176,8 @@ void debounce_D()
 		if (buffers[bt] == 0x0f) but_pressed = bt;
 	}
 
-	lcd.setCursor(0,1);
-	lcd.print(but_pressed, 10);
+	// lcd.setCursor(0,1);
+	// lcd.print(but_pressed, 10);
 }
 
 
@@ -221,8 +233,7 @@ void task_10ms(void)
 {
 	pc_cyclic();
 	tick_cyclic();
-	lcd_cyclic();
-	cyclic_fsm();
+	fsm_cyclic();
 }
 void task_20ms(void)
 {
@@ -230,14 +241,15 @@ void task_20ms(void)
 }
 void task_50ms(void)
 {
+	lcd_cyclic();
     cyclic_rtc();
 }
 void task_100ms(void)
 {
-	static uint32 i = 0;
-	lcd.setCursor(0,0);
-    lcd.print(i , 10);
-	i++;
+	// static uint32 i = 0;
+	// lcd.setCursor(0,0);
+    // lcd.print(i , 10);
+	// i++;
 }
 void pc_cyclic()
 {
@@ -255,7 +267,7 @@ void cyclic_rtc()
 	    // Common Causes:
 	    //    1) the battery on the device is low or even missing and
 			//the power line was disconnected
-	    Serial.println("RTC lost confidence in the DateTime!");
+	    // Serial.println("RTC lost confidence in the DateTime!");
 	}
 }
 
@@ -296,18 +308,209 @@ void tick_cyclic()
 
 }
 
+void idl_disp(disp* display)
+{
+	display->line1 = "da, am folosit scroll: asteapta!";
+	display->line2 = "nu";
+	display->blink1[0] = 17;
+	display->blink1[1] = 17;
+	display->scroll1[0] = 3;
+	display->scroll1[1] = 23;
+	display->scroll1[2] = 4;
+	display->len1 = 32;
+	display->len2 = 2;
+}
+void sci_disp(disp* display)
+{
+	idl_disp(display);
+	display->line2[0] = 'r';
+}
+void scio_disp(disp* display)
+{
 
+}
+void scim_disp(disp* display)
+{
+
+}
+void scis_disp(disp* display)
+{
+
+}
+void scii_disp(disp* display)
+{
+
+}
+void acf_disp(disp* display)
+{
+
+}
+void acfam_disp(disp* display)
+{
+
+}
+void acfazm_disp(disp* display)
+{
+
+}
+void acfao_disp(disp* display)
+{
+
+}
+void acfasm_disp(disp* display)
+{
+
+}
+void acfaszm_disp(disp* display)
+{
+
+}
+void acfata_disp(disp* display)
+{
+
+}
+void acfi_disp(disp* display)
+{
+
+}
+void ice_disp(disp* display)
+{
+
+}
+void iceo_disp(disp* display)
+{
+
+}
+void icem_disp(disp* display)
+{
+
+}
+void icess_disp(disp* display)
+{
+
+}
+void icei_disp(disp* display)
+{
+
+}
+void sd_disp(disp* display)
+{
+
+}
+void sdz_disp(disp* display)
+{
+
+}
+void sdl_disp(disp* display)
+{
+
+}
+void sda_disp(disp* display)
+{
+
+}
+void sdi_disp(disp* display)
+{
+
+}
+void inapoi_disp(disp* display)
+{
+
+}
+
+void update_lcd(char* line1, char* line2)
+{
+	static char old_line1[16], old_line2[16];
+	for(uint8 i; i < 16; i++)
+	{
+		if(old_line1[i] != line1[i])
+		{
+			lcd.setCursor(i,0);
+			lcd.print(line1[i]);
+		}
+		if(old_line2[i] != line2[i])
+		{
+			lcd.setCursor(i,1);
+			lcd.print(line2[i]);
+		}
+	}
+}
+
+
+typedef void (*disp_func_ptr)(disp*);
+
+disp_func_ptr disp_func[num_of_states] = {
+	idl_disp,
+	sci_disp,
+	scio_disp,
+	scim_disp,
+	scis_disp,
+	scii_disp,
+	acf_disp,
+	acfam_disp,
+	acfazm_disp,
+	acfao_disp,
+	acfasm_disp,
+	acfaszm_disp,
+	acfata_disp,
+	acfi_disp,
+	ice_disp,
+	iceo_disp,
+	icem_disp,
+	icess_disp,
+	icei_disp,
+	sd_disp,
+	sdz_disp,
+	sdl_disp,
+	sda_disp,
+	sdi_disp,
+	inapoi_disp,
+};
 
 void lcd_cyclic()
 {
-	lcd.setCursor(7 ,0);
-	print_in_time_to_lcd();
+	// lcd.setCursor(7 ,0);
+	// print_in_time_to_lcd();
+	//
+	// lcd.setCursor(10 ,1);
+	// print_out_time_to_lcd();
 
-	lcd.setCursor(10 ,1);
-	print_out_time_to_lcd();
+	static uint8 counter;
+	char line1[16], line2[16];
 
-	lcd.setCursor(3,0);
-	lcd.print((PORTD >> PD3) & 0x01u, 10 );
+	disp_func[fsm_state](&display);
+
+	for(uint8 i = 0; i < 16; i++)
+	{
+		if(i < display.scroll1[0])
+			line1[i] = display.line1[i];
+		else if (i >= display.scroll1[0] && i < (display.scroll1[0] + display.scroll1[2]))
+			line1[i] = display.line1[i + (counter % (display.scroll1[2] - display.scroll1[1]))];
+		else if (i >= (display.scroll1[0] + display.scroll1[2]))
+			line1[i] = display.line1[i + display.scroll1[1] - display.scroll1[0] - display.scroll1[2]];
+
+		if( counter % 4 < 2 &&  i > display.blink1[0] && i < display.blink1[1])
+		{
+			line1[i] = ' ';
+		}
+		// else
+		// {
+		// 	line1[i] = display.line1[i];
+		// }
+		if( counter % 4 < 2 &&  i > display.blink2[0] && i < display.blink2[1])
+		{
+			line2[i] = ' ';
+		}
+		// else
+		// {
+		// 	line2[i] = display.line2[i];
+		// }
+	}
+
+	counter++;
+
+	update_lcd(line1, line2);
+
 }
 
 void init_external_interrupts()
@@ -341,15 +544,15 @@ void init_timer1(void)
 
 void init_rtc()
 {
-	Serial.print("compiled: ");
-    Serial.print(__DATE__);
-    Serial.println(__TIME__);
+	// Serial.print("compiled: ");
+    // Serial.print(__DATE__);
+    // Serial.println(__TIME__);
 
     Rtc.Begin();
 
     RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
     // printDateTime(compiled);
-    Serial.println();
+    // Serial.println();
 
     if (!Rtc.IsDateTimeValid())
     {
@@ -357,35 +560,35 @@ void init_rtc()
         //    1) first time you ran and the device wasn't running yet
         //    2) the battery on the device is low or even missing
 
-        Serial.println("RTC lost confidence in the DateTime!");
+        // Serial.println("RTC lost confidence in the DateTime!");
         Rtc.SetDateTime(compiled);
     }
 
     if (Rtc.GetIsWriteProtected())
     {
-        Serial.println("RTC was write protected, enabling writing now");
+        // Serial.println("RTC was write protected, enabling writing now");
         Rtc.SetIsWriteProtected(false);
     }
 
     if (!Rtc.GetIsRunning())
     {
-        Serial.println("RTC was not actively running, starting now");
+        // Serial.println("RTC was not actively running, starting now");
         Rtc.SetIsRunning(true);
     }
 
     now = Rtc.GetDateTime();
     if (now < compiled)
     {
-        Serial.println("RTC is older than compile time!  (Updating DateTime)");
+        // Serial.println("RTC is older than compile time!  (Updating DateTime)");
         Rtc.SetDateTime(compiled);
     }
     else if (now > compiled)
     {
-        Serial.println("RTC is newer than compile time. (this is expected)");
+        // Serial.println("RTC is newer than compile time. (this is expected)");
     }
     else if (now == compiled)
     {
-		Serial.println("RTCisthesameascompiletime!(notexpectedbutallisfine)");
+		// Serial.println("RTCisthesameascompiletime!(notexpectedbutallisfine)");
     }
 }
 
@@ -401,47 +604,153 @@ void init_pc()
 	pc.minute = EEPROM.read(1);
 }
 
-e_fsm_state sci()
+e_fsm_state idl_f(void)
 {
-	return SA;
+	return idl;
 }
-e_fsm_state f_SB()
+e_fsm_state sci_f(void)
 {
-	return SB;
+	return sci;
 }
-e_fsm_state f_SC()
+e_fsm_state scio_f(void)
 {
-	return SC;
+	return scio;
 }
-e_fsm_state f_SD()
+e_fsm_state scim_f(void)
 {
-	return SD;
+	return scim;
+}
+e_fsm_state scis_f(void)
+{
+	return scis;
+}
+e_fsm_state scii_f(void)
+{
+	return scii;
+}
+e_fsm_state acf_f(void)
+{
+	return acf;
+}
+e_fsm_state acfam_f(void)
+{
+	return acfam;
+}
+e_fsm_state acfazm_f(void)
+{
+	return acfazm;
+}
+e_fsm_state acfao_f(void)
+{
+	return acfao;
+}
+e_fsm_state acfasm_f(void)
+{
+	return acfasm;
+}
+e_fsm_state acfaszm_f(void)
+{
+	return acfaszm;
+}
+e_fsm_state acfata_f(void)
+{
+	return acfata;
+}
+e_fsm_state acfi_f(void)
+{
+	return acfi;
+}
+e_fsm_state ice_f(void)
+{
+	return ice;
+}
+e_fsm_state iceo_f(void)
+{
+	return iceo;
+}
+e_fsm_state icem_f(void)
+{
+	return icem;
+}
+e_fsm_state icess_f(void)
+{
+	return icess;
+}
+e_fsm_state icei_f(void)
+{
+	return icei;
+}
+e_fsm_state sd_f(void)
+{
+	return sd;
+}
+e_fsm_state sdz_f(void)
+{
+	return sdz;
+}
+e_fsm_state sdl_f(void)
+{
+	return sdl;
+}
+e_fsm_state sda_f(void)
+{
+	return sda;
+}
+e_fsm_state sdi_f(void)
+{
+	return sdi;
+}
+e_fsm_state inapoi_f(void)
+{
+	return inapoi;
 }
 
 // typedef (*e_fsm_state)(void);
 typedef e_fsm_state (*fsm_ptr)(void);
-fsm_ptr transition_table[num_of_states][NO_BT_PRESSED] = {
-	{ f_SB, NULL, NULL, NULL, NULL },
-	{ NULL, NULL, f_SC, f_SA, NULL },
-	{ f_SD, f_SB, NULL, NULL, NULL },
-	{ NULL, NULL, NULL, f_SC, NULL },
+fsm_ptr transition_table[num_of_states][NO_BT_PRESSED] =
+{
+/*             right      up         down       left       select   */
+/* idl */     {sci_f,     sci_f,     sci_f,     sci_f,     sci_f    },
+/* sci */  	  {acf_f,     NULL,      NULL,      inapoi_f,  scio_f   },
+/* scio */    {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* scim */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* scis */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* scii */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* acf */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* acfam */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* acfazm */  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* acfao */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* acfasm */  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* acfaszm */ {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* acfata */  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* acfi */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* ice */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* iceo */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* icem */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* icess */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* icei */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* sd */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* sdz */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* sdl */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* sda */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* sdi */	  {NULL,      NULL,      NULL,      NULL,      NULL     },
+/* inapoi */  {NULL,      NULL,      NULL,      NULL,      NULL     },
+
 };
 
 
 
-void cyclic_fsm()
+void fsm_cyclic()
 {
-	static e_fsm_state prev_fsm_state, cur_fsm_state = SA;
 
-	if (but_pressed != NO_BT_PRESSED && transition_table[cur_fsm_state][but_pressed] != NULL)
+	if (but_pressed != NO_BT_PRESSED && transition_table[fsm_state][but_pressed] != NULL)
 	{
-		prev_fsm_state = cur_fsm_state;
-		cur_fsm_state = transition_table[cur_fsm_state][but_pressed]();
+		fsm_state = transition_table[fsm_state][but_pressed]();
 		but_pressed = NO_BT_PRESSED;
 	}
 	// p_fsm das = f_SB;
-	lcd.setCursor(3,1);
-	lcd.print(cur_fsm_state, 10);
+	// lcd.setCursor(3,1);
+	// lcd.print(fsm_state, 10);
 }
 
 void printDateTime(const RtcDateTime& dt)
