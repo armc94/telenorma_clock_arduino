@@ -273,8 +273,8 @@ void task_20ms(void)
 {
 
 	lcd_cyclic();
-	lcd.setCursor(7,1);
-	lcd.print("  ");
+	// lcd.setCursor(7,1);
+	// lcd.print("  ");
 	lcd.setCursor(1,0);
 	lcd.print(fsm_state, 10);
 }
@@ -602,15 +602,13 @@ void icex_disp()
 }
 void sd_disp()
 {
-	char date_string[11];
+	char date_string[9];
 	reset_display();
 
-	get_date(date_string);
-	date_string[7] = date_string[9];
-	date_string[8] = date_string[10];
+	get_short_date(date_string);
 
 	memcpy(display.line1 + 2, sd_string, 12 * sizeof(char));
-	memcpy(display.line2 + 7, date_string , 11 * sizeof(char));
+	memcpy(display.line2 + 8, date_string , 9 * sizeof(char));
 
 	apply_arrows();
 	apply_vx();
@@ -693,15 +691,15 @@ void sdx_disp()
 }
 void sod_disp()
 {
-	char date_string[11];
+	char time_string[6];
 	reset_display();
 
-	get_date(date_string);
-	date_string[7] = date_string[9];
-	date_string[8] = date_string[10];
+	print_night_time_on(time_string);
+	time_string[7] = time_string[9];
+	time_string[8] = time_string[10];
 
 	memcpy(display.line1 + 2, lum_ora_deschis_sting, 9 * sizeof(char));
-	memcpy(display.line2 + 7, date_string , 11 * sizeof(char));
+	memcpy(display.line2 + 7, time_string , 11 * sizeof(char));
 
 	apply_arrows();
 	apply_vx();
@@ -709,27 +707,63 @@ void sod_disp()
 }
 void sodo_disp()
 {
+	char time_string[6];
+	reset_display();
 
+	print_night_time_on(time_string);
+	time_string[7] = time_string[9];
+	time_string[8] = time_string[10];
+
+	memcpy(display.line1 + 2, lum_ora_deschis_sting, 9 * sizeof(char));
+	memcpy(display.line2 + 7, time_string , 11 * sizeof(char));
+
+	apply_arrows();
+	apply_vx();
+	blink_menu(ARROWS);
 }
 void sodv_disp()
 {
+	char time_string[6];
+	reset_display();
 
+	print_night_time_on(time_string);
+	time_string[7] = time_string[9];
+	time_string[8] = time_string[10];
+
+	memcpy(display.line1 + 2, lum_ora_deschis_sting, 9 * sizeof(char));
+	memcpy(display.line2 + 7, time_string , 11 * sizeof(char));
+
+	apply_arrows();
+	apply_vx();
+	blink_menu(ARROWS);
 }
 void sodx_disp()
 {
+	char time_string[6];
+	reset_display();
 
+	print_night_time_on(time_string);
+	time_string[7] = time_string[9];
+	time_string[8] = time_string[10];
+
+	memcpy(display.line1 + 2, lum_ora_deschis_sting, 9 * sizeof(char));
+	memcpy(display.line2 + 7, time_string , 11 * sizeof(char));
+
+	apply_arrows();
+	apply_vx();
+	blink_menu(ARROWS);
 }
 void soi_disp()
 {
-	char date_string[11];
+	char time_string[6];
 	reset_display();
 
-	get_date(date_string);
-	date_string[7] = date_string[9];
-	date_string[8] = date_string[10];
+	print_night_time_on(time_string);
+	time_string[7] = time_string[9];
+	time_string[8] = time_string[10];
 
 	memcpy(display.line1 + 2, lum_ora_inchis_string, 10 * sizeof(char));
-	memcpy(display.line2 + 7, date_string , 11 * sizeof(char));
+	memcpy(display.line2 + 7, time_string , 11 * sizeof(char));
 
 	apply_arrows();
 	apply_vx();
@@ -737,27 +771,63 @@ void soi_disp()
 }
 void soio_disp()
 {
+	char time_string[6];
+	reset_display();
 
+	print_night_time_on(time_string);
+	time_string[7] = time_string[9];
+	time_string[8] = time_string[10];
+
+	memcpy(display.line1 + 2, lum_ora_inchis_string, 10 * sizeof(char));
+	memcpy(display.line2 + 7, time_string , 11 * sizeof(char));
+
+	apply_arrows();
+	apply_vx();
+	blink_menu(HOUR);
 }
 void soiv_disp()
 {
+	char time_string[6];
+	reset_display();
 
+	print_night_time_off(time_string);
+	time_string[7] = time_string[9];
+	time_string[8] = time_string[10];
+
+	memcpy(display.line1 + 2, lum_ora_inchis_string, 10 * sizeof(char));
+	memcpy(display.line2 + 7, time_string , 11 * sizeof(char));
+
+	apply_arrows();
+	apply_vx();
+	blink_menu(START);
 }
 void soix_disp()
 {
+	char time_string[6];
+	reset_display();
 
+	print_night_time_off(time_string);
+	time_string[7] = time_string[9];
+	time_string[8] = time_string[10];
+
+	memcpy(display.line1 + 2, lum_ora_inchis_string, 10 * sizeof(char));
+	memcpy(display.line2 + 7, time_string , 11 * sizeof(char));
+
+	apply_arrows();
+	apply_vx();
+	blink_menu(CANCEL);
 }
 void mi_disp()
 {
-	char date_string[11];
+	char time_string[11];
 	reset_display();
 
-	get_date(date_string);
-	date_string[7] = date_string[9];
-	date_string[8] = date_string[10];
+	get_date(time_string);
+	time_string[7] = time_string[9];
+	time_string[8] = time_string[10];
 
 	memcpy(display.line1 + 2, mod_iluminat_string, 12 * sizeof(char));
-	memcpy(display.line2 + 7, date_string , 11 * sizeof(char));
+	memcpy(display.line2 + 7, time_string , 11 * sizeof(char));
 
 	apply_arrows();
 	apply_vx();
@@ -777,15 +847,10 @@ void mix_disp()
 }
 void ext_disp()
 {
-	char date_string[11];
 	reset_display();
 
-	get_date(date_string);
-	date_string[7] = date_string[9];
-	date_string[8] = date_string[10];
-
 	memcpy(display.line1 + 2, exit_string, 12 * sizeof(char));
-	memcpy(display.line2 + 7, date_string , 11 * sizeof(char));
+	memcpy(display.line2, "                " , 16 * sizeof(char));
 
 	apply_arrows();
 	apply_vx();
@@ -1248,6 +1313,12 @@ void get_rtc_time(char string[9])
 void get_date(char string[12])
 {
     snprintf_P(string, 12, PSTR("%02u/   /%04u"), now.Day(), now.Year() );
+	memcpy(string + 3, month[now.Month() - 1], 3);
+}
+
+void get_short_date(char string[9])
+{
+    snprintf_P(string, 12, PSTR("%02u/   /%02u"), now.Day(), now.Day()%100 );
 	memcpy(string + 3, month[now.Month() - 1], 3);
 }
 
